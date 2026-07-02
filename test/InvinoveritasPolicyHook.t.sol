@@ -37,8 +37,17 @@ contract InvinoveritasPolicyHookTest is Test {
         hook.onInstall(abi.encode(vs));
     }
 
+    // Same value as hook.EXECUTE_SELECTOR(), computed locally (pure, no external call) rather than
+    // read from the contract — reading it via an external call here made _msgData() itself perform
+    // a call, which (when _msgData() is evaluated as an argument right after vm.prank(account))
+    // silently consumed the prank before the intended call, e.g. preCheck ran as the test contract
+    // instead of `account`. Found + fixed 2026-07-02: this suite had never actually been run with
+    // forge before (no forge in the environment previously — only solc-compile-checked), so the bug
+    // was latent since it was written.
+    bytes4 constant _EXECUTE_SELECTOR = bytes4(keccak256("execute(bytes32,bytes)"));
+
     function _msgData() internal view returns (bytes memory) {
-        return abi.encodeWithSelector(hook.EXECUTE_SELECTOR(), mode, executionCalldata);
+        return abi.encodeWithSelector(_EXECUTE_SELECTOR, mode, executionCalldata);
     }
 
     function _digest() internal view returns (bytes32) {
@@ -85,16 +94,18 @@ contract InvinoveritasPolicyHookTest is Test {
     function test_RevertWhen_VerifierNotAllowlisted() public {
         bytes32 d = _digest();
         uint64 expiry = uint64(block.timestamp + 1 hours);
+        uint8 approve = hook.VERDICT_APPROVE(); // evaluate BEFORE expectRevert — see _msgData() comment
         vm.expectRevert(bytes("verifier not in independence allowlist"));
-        hook.recordVerdict(account, d, hook.VERDICT_APPROVE(), strangerKey, expiry, mockSig);
+        hook.recordVerdict(account, d, approve, strangerKey, expiry, mockSig);
     }
 
     function test_RevertWhen_BadSignature() public {
         bytes32 d = _digest();
         uint64 expiry = uint64(block.timestamp + 1 hours);
+        uint8 approve = hook.VERDICT_APPROVE(); // see comment above
         // do NOT mark the tuple valid in the mock
         vm.expectRevert(bytes("verdict signature invalid"));
-        hook.recordVerdict(account, d, hook.VERDICT_APPROVE(), verifier, expiry, mockSig);
+        hook.recordVerdict(account, d, approve, verifier, expiry, mockSig);
     }
 
     function test_RevertWhen_DigestMismatch_BindingHolds() public {
