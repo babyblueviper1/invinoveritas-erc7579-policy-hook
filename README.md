@@ -1,6 +1,6 @@
 # invinoveritas ERC-7579 policy hook (reference)
 
-**An ERC-7579 hook module that turns an independent, recomputable [`/review`](https://api.babyblueviper.com) verdict into an on-chain, fail-closed pre-execution gate for a modular smart account.**
+**An ERC-7579 hook module that turns an independent, recomputable [`/review`](https://invinoveritas.dev) verdict into an on-chain, fail-closed pre-execution gate for a modular smart account.**
 
 This is the settlement-side member of the same family as [`invinoveritas-governance-gate-core`](../governance-gate-core) (the framework-agnostic verdict primitive) and [`invinoveritas-metamask-snap`](../metamask-snap) (verdict before you sign). Where those advise *off-chain*, this one is **on-chain enforcement**: an ERC-4337 / ERC-7579 modular account literally cannot execute a covered call unless an independent approve-verdict that binds to that exact call has been recorded and signature-verified.
 
@@ -30,7 +30,7 @@ The AAR / action-receipt crowd is entirely absent from the settlement layer; a p
 
 ## Signature verification (the honest layering)
 
-The **canonical** invinoveritas proof is the full BIP-340-signed [NIP-01 Nostr event](https://api.babyblueviper.com/ledger), Bitcoin-anchored (OpenTimestamps) and re-verifiable for free at [`/verify-proof`](https://api.babyblueviper.com/verify-proof) — trusting neither the presenter nor us. EVM cannot cheaply recompute a JSON Nostr event id, so **on-chain this module verifies a compact commitment to the same `(actionDigest, verdict, verifier_pubkey)` triple** via an injected [`IVerdictSigVerifier`](src/IVerdictSigVerifier.sol). The off-chain canonical proof remains the source of truth; the on-chain commitment is its enforceable projection, and the binding to the real action is preserved because the digest is **recomputed on-chain**, not trusted.
+The **canonical** invinoveritas proof is the full BIP-340-signed [NIP-01 Nostr event](https://invinoveritas.dev/ledger.html), Bitcoin-anchored (OpenTimestamps) and re-verifiable for free at [`/verify-proof`](https://api.babyblueviper.com/verify-proof) — trusting neither the presenter nor us. EVM cannot cheaply recompute a JSON Nostr event id, so **on-chain this module verifies a compact commitment to the same `(actionDigest, verdict, verifier_pubkey)` triple** via an injected [`IVerdictSigVerifier`](src/IVerdictSigVerifier.sol). The off-chain canonical proof remains the source of truth; the on-chain commitment is its enforceable projection, and the binding to the real action is preserved because the digest is **recomputed on-chain**, not trusted.
 
 `IVerdictSigVerifier` abstracts the curve so you wire an audited on-chain **BIP-340 secp256k1** verifier (e.g. `verklegarden/crysol`, `chronicleprotocol/scribe`, or `witnet/elliptic-curve-solidity`) — the same schnorr scheme you verify off-chain. A [`MockVerdictSigVerifier`](test/MockVerdictSigVerifier.sol) is provided for tests.
 
